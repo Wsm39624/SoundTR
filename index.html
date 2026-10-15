@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>المترجم الصوتي المباشر | Live Audio Translator</title>
+  
+  <!-- Tailwind CSS عبر CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- خطوط جوجل (Tajawal للعربية و Inter للغات اللاتينية) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Tajawal', 'Inter', sans-serif;
+      background: radial-gradient(circle at top, #1e1b4b, #0f172a, #020617);
+      min-height: 100vh;
+      color: #f8fafc;
+    }
+
+    /* تأثيرات الزجاج المعتم (Glassmorphism) */
+    .glass-panel {
+      background: rgba(30, 41, 59, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* حركات وتأثيرات النابض الصوتي */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
+    .mic-active {
+      animation: pulse-ring 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+      background-color: #ef4444 !important;
+    }
+
+    /* تخصيص شريط التمرير */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.4);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(99, 102, 241, 0.7);
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen p-4 md:p-8">
+
+  <!-- الهيكل الرئيسي للتطبيق -->
+  <div class="max-w-6xl mx-auto w-full flex-grow flex flex-col gap-6">
+    
+    <!-- 1. شريط التحكم العلوي (Control Panel Header) -->
+    <header class="glass-panel rounded-2xl p-4 md:p-6 shadow-2xl flex flex-col gap-4">
+      <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-700/50 pb-4">
+        <!-- عنوان التطبيق والمؤشر -->
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 bg-indigo-600/30 border border-indigo-500/40 rounded-xl text-indigo-400">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 016 0v6a3 3 0 01-3 3z"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-xl md:text-2xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+              المترجم الصوتي المباشر
+            </h1>
+            <p class="text-xs text-slate-400">Live Audio-to-Audio Streaming Translator</p>
+          </div>
+        </div>
+
+        <!-- زر الاستماع الرئيسي -->
+        <button id="btnToggleListen" class="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-indigo-500/25 active:scale-95">
+          <svg id="micIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 016 0v6a3 3 0 01-3 3z"></path>
+          </svg>
+          <span id="btnListenText">بدء الترجمة المباشرة</span>
+        </button>
+      </div>
+
+      <!-- خيارات اللغات وأدوات الصوت -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+        <!-- لغة المصدر -->
+        <div class="md:col-span-4 flex flex-col gap-1">
+          <label class="text-xs text-slate-400 font-medium">لغة المصدر (الصوت المستمع):</label>
+          <select id="sourceLangSelect" class="bg-slate-900/80 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="zh-CN" selected>الصينية (Chinese Chinese - 中文)</option>
+            <option value="ar-SA">العربية (Arabic - العربية)</option>
+            <option value="en-US">الإنكليزية (English - US)</option>
+          </select>
+        </div>
+
+        <!-- زر التبديل السريع -->
+        <div class="md:col-span-1 flex justify-center items-end pb-1">
+          <button id="btnSwapLangs" title="تبديل اللغات" class="p-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 transition active:scale-90">
+            ⇄
+          </button>
+        </div>
+
+        <!-- لغة الهدف -->
+        <div class="md:col-span-4 flex flex-col gap-1">
+          <label class="text-xs text-slate-400 font-medium">لغة الهدف (الصوت المترجم):</label>
+          <select id="targetLangSelect" class="bg-slate-900/80 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="ar-SA" selected>العربية (Arabic - العربية)</option>
+            <option value="zh-CN">الصينية (Chinese - 中文)</option>
+            <option value="en-US">الإنكليزية (English - US)</option>
+          </select>
+        </div>
+
+        <!-- أدوات القراءة والصوت -->
+        <div class="md:col-span-3 flex items-center justify-end gap-3 pt-4 md:pt-0 border-t md:border-t-0 border-slate-800">
+          <!-- سرعة الصوت -->
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-slate-400">السرعة:</label>
+            <select id="ttsRateSelect" class="bg-slate-900/80 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 outline-none">
+              <option value="1.0" selected>1.0x (عادية)</option>
+              <option value="1.25">1.25x (سريعة)</option>
+              <option value="1.5">1.5x (فائقة)</option>
+            </select>
+          </div>
+
+          <!-- زر كتم الصوت -->
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-slate-400">الصوت:</label>
+            <button id="btnToggleMute" class="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 text-xs">
+              🔊 شغال
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- المخطط المرئي المباشر للصوت (Audio Visualizer Canvas) -->
+      <div class="w-full h-10 bg-slate-950/60 rounded-lg overflow-hidden border border-slate-800 relative flex items-center justify-center">
+        <canvas id="visualizerCanvas" class="w-full h-full block"></canvas>
+        <span id="visualizerStatus" class="absolute text-[11px] text-slate-500 pointer-events-none">المايكروفون غير نشط</span>
+      </div>
+    </header>
+
+    <!-- 2. لوحة عرض النصوص المباشرة (Dual Subtitle Display) -->
+    <main class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow">
+      
+      <!-- لوحة النص الأصلي (المستمع) -->
+      <section class="glass-panel rounded-2xl p-5 flex flex-col h-[400px] md:h-[500px]">
+        <div class="flex items-center justify-between border-b border-slate-700/60 pb-3 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <h2 class="font-semibold text-slate-200 text-sm">الكلام المستمع (المصدر)</h2>
+          </div>
+          <span id="sourceLangTag" class="text-xs px-2.5 py-1 bg-slate-800 text-indigo-300 rounded-full border border-slate-700">zh-CN</span>
+        </div>
+        
+        <div id="sourceTranscriptBox" class="flex-grow overflow-y-auto space-y-3 pr-2 text-slate-300 text-sm leading-relaxed">
+          <div class="text-slate-500 text-xs italic text-center py-10">اضغط على "بدء الترجمة المباشرة" وابدأ الكلام...</div>
+        </div>
+      </section>
+
+      <!-- لوحة النص المترجم (الهدف) -->
+      <section class="glass-panel rounded-2xl p-5 flex flex-col h-[400px] md:h-[500px]">
+        <div class="flex items-center justify-between border-b border-slate-700/60 pb-3 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse"></span>
+            <h2 class="font-semibold text-slate-200 text-sm">الترجمة الصوتية المباشرة (الهدف)</h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btnClearHistory" class="text-xs text-slate-400 hover:text-rose-400 transition">مسح السجل</button>
+            <span id="targetLangTag" class="text-xs px-2.5 py-1 bg-slate-800 text-cyan-300 rounded-full border border-slate-700">ar-SA</span>
+          </div>
+        </div>
+        
+        <div id="targetTranscriptBox" class="flex-grow overflow-y-auto space-y-3 pr-2 text-slate-100 text-base font-medium leading-relaxed">
+          <div class="text-slate-500 text-xs italic text-center py-10">ستظهر الترجمة المباشرة هنا وسيتم نطقها تلقائياً...</div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ترويسة سفلية -->
+    <footer class="text-center text-xs text-slate-500 py-2">
+      تطبيق الترجمة الصوتية المباشرة الفورية • يعتمد على أحدث تقنيات Web Speech & Audio API
+    </footer>
+  </div>
+
+  <!-- 3. البرمجة التفاعلية (Modular Vanilla JavaScript) -->
+  <script>
+    /**
+     * ==========================================
+     * 1. وحدة إدارة الصوت والالتقاط (AudioInputManager)
+     * ==========================================
+     */
+    class AudioInputManager {
+      constructor() {
+        this.stream = null;
+        this.audioCtx = null;
+        this.analyser = null;
+        this.sourceNode = null;
+        this.isInitialized = false;
+      }
+
+      // طلب إذن المايكروفون مرة واحدة والحفاظ عليه شغالاً
+      async initializeStream() {
+        if (this.isInitialized && this.stream) return this.stream;
+
+        try {
+          this.stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: { 
+              echoCancellation: true, 
+              noiseSuppression: true, 
+              autoGainControl: true 
+            } 
+          });
+
+          // إعداد Web Audio API للرسم البياني
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          this.audioCtx = new AudioContextClass();
+          this.analyser = this.audioCtx.createAnalyser();
+          this.analyser.fftSize = 64;
+
+          this.sourceNode = this.audioCtx.createMediaStreamSource(this.stream);
+          this.sourceNode.connect(this.analyser);
+
+          this.isInitialized = true;
+          return this.stream;
+        } catch (err) {
+          console.error("خطأ في الوصول إلى المايكروفون:", err);
+          throw new Error("تعذر الحصول على إذن المايكروفون. يرجى السماح بالوصول وتحديث الصفحة.");
+        }
+      }
+
+      getFrequencyData(array) {
+        if (this.analyser) {
+          this.analyser.getByteFrequencyData(array);
+        }
+      }
+    }
+
+    /**
+     * ==========================================
+     * 2. محرك التعرّف على الكلام (SpeechRecognitionEngine)
+     * ==========================================
+     */
+    class SpeechRecognitionEngine {
+      constructor(onResultCallback, onErrorCallback) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+          alert("المتصفح الحالي لا يدعم Web Speech API. يرجى استخدام Chrome أو Edge.");
+          return;
+        }
+
+        this.recognition = new SpeechRecognition();
+        this.recognition.continuous = true;
+        this.recognition.interimResults = true; // التقاط الأجزاء المؤقتة بالوقت الفعلي
+        this.isListening = false;
+        this.currentLang = 'zh-CN';
+
+        this.onResultCallback = onResultCallback;
+        this.onErrorCallback = onErrorCallback;
+
+        this.initEvents();
+      }
+
+      initEvents() {
+        this.recognition.onresult = (event) => {
+          let interimTranscript = '';
+          let finalTranscript = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript;
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+
+          this.onResultCallback({
+            final: finalTranscript.trim(),
+            interim: interimTranscript.trim()
+          });
+        };
+
+        this.recognition.onerror = (event) => {
+          console.warn("خطأ في محرك التعرف الصوتي:", event.error);
+          if (this.onErrorCallback) this.onErrorCallback(event.error);
+        };
+
+        // إعادة التشغيل التلقائية التناغمية السريعة عند انقطاع الاستماع الصامت
+        this.recognition.onend = () => {
+          if (this.isListening) {
+            try {
+              this.recognition.start();
+            } catch (e) {
+              console.warn("إعادة تشغيل الاستماع الجاري...", e);
+            }
+          }
+        };
+      }
+
+      start(language) {
+        this.currentLang = language || this.currentLang;
+        this.recognition.lang = this.currentLang;
+        this.isListening = true;
+        try {
+          this.recognition.start();
+        } catch (e) {
+          // قد يكون شغالاً بالفعل
+        }
+      }
+
+      stop() {
+        this.isListening = false;
+        try {
+          this.recognition.stop();
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+
+      setLanguage(language) {
+        this.currentLang = language;
+        this.recognition.lang = language;
+        if (this.isListening) {
+          this.stop();
+          setTimeout(() => this.start(language), 150);
+        }
+      }
+    }
+
+    /**
+     * ==========================================
+     * 3. محرك الترجمة الفورية (TranslationService)
+     * ==========================================
+     */
+    class TranslationService {
+      constructor() {
+        // قاموس سريعة محلي للجمل الأكثر شيوعاً لتسريع وقت الاستجابة (< 50 ملي ثانية)
+        this.quickDictionary = {
+          'zh-CN_ar-SA': {
+            '你好': 'مرحباً',
+            '你好吗': 'كيف حالك؟',
+            '谢谢': 'شكراً لك',
+            '早上好': 'صباح الخير',
+            '晚安': 'تصبح على خير',
+            '再见': 'إلى اللقاء',
+            '很高兴见到你': 'يسعدني لقاؤك',
+            '我是': 'أنا'
+          },
+          'ar-SA_zh-CN': {
+            'مرحبا': '你好',
+            'كيف حالك': '你好吗',
+            'شكرا': '谢谢',
+            'صباح الخير': '早上好',
+            'مع السلامة': '再见'
+          },
+          'en-US_ar-SA': {
+            'hello': 'مرحباً',
+            'how are you': 'كيف حالك؟',
+            'thank you': 'شكراً لك',
+            'good morning': 'صباح الخير',
+            'welcome': 'أهلاً وسهلاً'
+          }
+        };
+      }
+
+      /**
+       * تنفيذ الترجمة بالوقت الفعلي
+       * ملاحظة للتطوير المستقبلي: يمكنك استبدال هذا الجزء بـ WebSockets للربط بـ:
+       * OpenAI Realtime API أو Google Gemini 1.5 Flash Live API
+       */
+      async translate(text, sourceLang, targetLang) {
+        if (!text || text.trim() === '') return '';
+
+        const pairKey = `${sourceLang}_${targetLang}`;
+        const cleanText = text.trim().toLowerCase();
+
+        // 1. الفحص الفوري في القاموس المحلي
+        if (this.quickDictionary[pairKey] && this.quickDictionary[pairKey][cleanText]) {
+          return this.quickDictionary[pairKey][cleanText];
+        }
+
+        // 2. استخدام خادم ترجمة مفتوح وسريع بالوقت الفعلي (MyMemory API)
+        try {
+          const sLang = sourceLang.split('-')[0];
+          const tLang = targetLang.split('-')[0];
+          const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sLang}|${tLang}`);
+          const data = await response.json();
+          if (data && data.responseData && data.responseData.translatedText) {
+            return data.responseData.translatedText;
+          }
+        } catch (err) {
+          console.warn("تعذر الاتصال بـ API الترجمة الخارجية، يتم استخدام المحاكاة التلقائية:", err);
+        }
+
+        // 3. احتياطي (Fallback): محاكاة ترجمة سريعة في حال انقطاع الشبكة
+        return `[مترجم: ${text}]`;
+      }
+    }
+
+    /**
+     * ==========================================
+     * 4. محرك الإخراج الصوتي (AudioOutputManager)
+     * ==========================================
+     */
+    class AudioOutputManager {
+      constructor() {
+        this.synth = window.speechSynthesis;
+        this.rate = 1.0;
+        this.isMuted = false;
+        this.voices = [];
+
+        if (this.synth) {
+          this.loadVoices();
+          if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = () => this.loadVoices();
+          }
+        }
+      }
+
+      loadVoices() {
+        this.voices = this.synth.getVoices();
+      }
+
+      speak(text, lang) {
+        if (this.isMuted || !text || !this.synth) return;
+
+        // إلغاء أي صوت سابق لمنع التداخل والبطء
+        this.synth.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = parseFloat(this.rate);
+
+        // البحث عن صوت مناسب للغة الهدف
+        const targetVoice = this.voices.find(v => v.lang.startsWith(lang.split('-')[0]) || v.lang === lang);
+        if (targetVoice) {
+          utterance.voice = targetVoice;
+        }
+        utterance.lang = lang;
+
+        this.synth.speak(utterance);
+      }
+
+      setRate(rateValue) {
+        this.rate = rateValue;
+      }
+
+      toggleMute() {
+        this.isMuted = !this.isMuted;
+        if (this.isMuted && this.synth) {
+          this.synth.cancel();
+        }
+        return this.isMuted;
+      }
+    }
+
+    /**
+     * ==========================================
+     * 5. متحكم الواجهة والتطبيق الرئيسي (UIController)
+     * ==========================================
+     */
+    class UIController {
+      constructor() {
+        // العناصر
+        this.btnToggleListen = document.getElementById('btnToggleListen');
+        this.btnListenText = document.getElementById('btnListenText');
+        this.sourceLangSelect = document.getElementById('sourceLangSelect');
+        this.targetLangSelect = document.getElementById('targetLangSelect');
+        this.btnSwapLangs = document.getElementById('btnSwapLangs');
+        this.ttsRateSelect = document.getElementById('ttsRateSelect');
+        this.btnToggleMute = document.getElementById('btnToggleMute');
+        this.btnClearHistory = document.getElementById('btnClearHistory');
+        
+        this.sourceTranscriptBox = document.getElementById('sourceTranscriptBox');
+        this.targetTranscriptBox = document.getElementById('targetTranscriptBox');
+        this.sourceLangTag = document.getElementById('sourceLangTag');
+        this.targetLangTag = document.getElementById('targetLangTag');
+
+        this.canvas = document.getElementById('visualizerCanvas');
+        this.canvasCtx = this.canvas.getContext('2d');
+        this.visualizerStatus = document.getElementById('visualizerStatus');
+
+        // المحركات البرمجية
+        this.audioInput = new AudioInputManager();
+        this.translationService = new TranslationService();
+        this.audioOutput = new AudioOutputManager();
+        this.speechEngine = new SpeechRecognitionEngine(
+          this.handleSpeechResult.bind(this),
+          this.handleSpeechError.bind(this)
+        );
+
+        this.activeInterimSourceElem = null;
+        this.activeInterimTargetElem = null;
+        this.animFrameId = null;
+
+        this.initEventListeners();
+      }
+
+      initEventListeners() {
+        // زر الاستماع/الإيقاف الرئيسي
+        this.btnToggleListen.addEventListener('click', () => this.toggleListening());
+
+        // تغيير اللغات
+        this.sourceLangSelect.addEventListener('change', (e) => {
+          const lang = e.target.value;
+          this.sourceLangTag.textContent = lang;
+          this.speechEngine.setLanguage(lang);
+        });
+
+        this.targetLangSelect.addEventListener('change', (e) => {
+          const lang = e.target.value;
+          this.targetLangTag.textContent = lang;
+          this.updateTargetDir(lang);
+        });
+
+        // زر التبديل السريع
+        this.btnSwapLangs.addEventListener('click', () => {
+          const srcVal = this.sourceLangSelect.value;
+          const tgtVal = this.targetLangSelect.value;
+
+          this.sourceLangSelect.value = tgtVal;
+          this.targetLangSelect.value = srcVal;
+
+          this.sourceLangTag.textContent = tgtVal;
+          this.targetLangTag.textContent = srcVal;
+
+          this.speechEngine.setLanguage(tgtVal);
+          this.updateTargetDir(srcVal);
+        });
+
+        // خيارات الصوت والسرعة
+        this.ttsRateSelect.addEventListener('change', (e) => {
+          this.audioOutput.setRate(e.target.value);
+        });
+
+        this.btnToggleMute.addEventListener('click', () => {
+          const isMuted = this.audioOutput.toggleMute();
+          this.btnToggleMute.textContent = isMuted ? '🔇 مكتوم' : '🔊 شغال';
+          this.btnToggleMute.classList.toggle('bg-rose-900/60', isMuted);
+        });
+
+        // مسح السجل
+        this.btnClearHistory.addEventListener('click', () => {
+          this.sourceTranscriptBox.innerHTML = '';
+          this.targetTranscriptBox.innerHTML = '';
+        });
+      }
+
+      async toggleListening() {
+        if (!this.speechEngine.isListening) {
+          try {
+            // طلب الإذن والتهيئة
+            await this.audioInput.initializeStream();
+            
+            const srcLang = this.sourceLangSelect.value;
+            this.speechEngine.start(srcLang);
+
+            // تحديث الواجهة للمحاكاة النشطة
+            this.btnToggleListen.classList.add('mic-active');
+            this.btnListenText.textContent = 'إيقاف الاستماع';
+            this.visualizerStatus.style.display = 'none';
+
+            // بدء رسم المخطط المرئي المباشر
+            this.drawVisualizer();
+
+          } catch (err) {
+            alert(err.message);
+          }
+        } else {
+          this.speechEngine.stop();
+          this.btnToggleListen.classList.remove('mic-active');
+          this.btnListenText.textContent = 'بدء الترجمة المباشرة';
+          this.visualizerStatus.style.display = 'block';
+          if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+        }
+      }
+
+      async handleSpeechResult(result) {
+        const sourceLang = this.sourceLangSelect.value;
+        const targetLang = this.targetLangSelect.value;
+
+        // تنظيف الرسائل الافتراضية الأولية
+        if (this.sourceTranscriptBox.querySelector('.italic')) {
+          this.sourceTranscriptBox.innerHTML = '';
+          this.targetTranscriptBox.innerHTML = '';
+        }
+
+        // 1. معالجة النص غير المكتمل (Interim Results) بالوقت الفعلي
+        if (result.interim) {
+          if (!this.activeInterimSourceElem) {
+            this.activeInterimSourceElem = this.createTranscriptCard(this.sourceTranscriptBox, 'text-slate-400 italic');
+            this.activeInterimTargetElem = this.createTranscriptCard(this.targetTranscriptBox, 'text-cyan-300/70 italic');
+          }
+          
+          this.activeInterimSourceElem.textContent = result.interim;
+
+          // ترجمة فورية للكلمات المبدئية
+          const translatedInterim = await this.translationService.translate(result.interim, sourceLang, targetLang);
+          this.activeInterimTargetElem.textContent = translatedInterim;
+          
+          this.scrollToBottom();
+        }
+
+        // 2. معالجة النص النهائي المكتمل (Final Results)
+        if (result.final) {
+          if (this.activeInterimSourceElem) {
+            this.activeInterimSourceElem.remove();
+            this.activeInterimTargetElem.remove();
+            this.activeInterimSourceElem = null;
+            this.activeInterimTargetElem = null;
+          }
+
+          const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          
+          // إضافة النص الأصلي لمربع المصدر
+          const finalSourceCard = this.createTranscriptCard(this.sourceTranscriptBox, 'text-slate-200');
+          finalSourceCard.innerHTML = `<span class="text-[10px] text-slate-500 block mb-0.5">${timeStr}</span>${result.final}`;
+
+          // ترجمة النص النهائي
+          const finalTranslation = await this.translationService.translate(result.final, sourceLang, targetLang);
+          
+          // إضافة الترجمة النهائية لمربع الهدف
+          const finalTargetCard = this.createTranscriptCard(this.targetTranscriptBox, 'text-cyan-200 bg-cyan-950/30 border border-cyan-800/40');
+          finalTargetCard.innerHTML = `<span class="text-[10px] text-cyan-500/70 block mb-0.5">${timeStr}</span>${finalTranslation}`;
+
+          this.scrollToBottom();
+
+          // تشغيل الإخراج الصوتي الفوري عبر TTS
+          this.audioOutput.speak(finalTranslation, targetLang);
+        }
+      }
+
+      handleSpeechError(error) {
+        if (error === 'no-speech') return;
+        console.warn("حدث خطأ في محرك الكلام:", error);
+      }
+
+      createTranscriptCard(container, extraClasses) {
+        const card = document.createElement('div');
+        card.className = `p-3 rounded-xl glass-card text-sm leading-relaxed ${extraClasses}`;
+        container.appendChild(card);
+        return card;
+      }
+
+      updateTargetDir(lang) {
+        // ضبط اتجاه النص (RTL للعربية، LTR للإنكليزية والصينية)
+        if (lang.startsWith('ar')) {
+          this.targetTranscriptBox.dir = 'rtl';
+        } else {
+          this.targetTranscriptBox.dir = 'ltr';
+        }
+      }
+
+      scrollToBottom() {
+        this.sourceTranscriptBox.scrollTop = this.sourceTranscriptBox.scrollHeight;
+        this.targetTranscriptBox.scrollTop = this.targetTranscriptBox.scrollHeight;
+      }
+
+      // رسم مخطط الموجات الصوتية الفوري على الـ Canvas
+      drawVisualizer() {
+        const dataArray = new Uint8Array(32);
+        
+        const render = () => {
+          this.audioInput.getFrequencyData(dataArray);
+
+          this.canvasCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+          const barWidth = (this.canvas.width / dataArray.length) * 2;
+          let x = 0;
+
+          for (let i = 0; i < dataArray.length; i++) {
+            const barHeight = (dataArray[i] / 255) * this.canvas.height;
+            
+            const gradient = this.canvasCtx.createLinearGradient(0, this.canvas.height, 0, 0);
+            gradient.addColorStop(0, '#6366f1');
+            gradient.addColorStop(1, '#06b6d4');
+
+            this.canvasCtx.fillStyle = gradient;
+            this.canvasCtx.fillRect(x, this.canvas.height - barHeight, barWidth - 2, barHeight);
+
+            x += barWidth;
+          }
+
+          if (this.speechEngine.isListening) {
+            this.animFrameId = requestAnimationFrame(render);
+          }
+        };
+
+        render();
+      }
+    }
+
+    // تشغيل التطبيق فور اكتمال تحكم المستند
+    window.addEventListener('DOMContentLoaded', () => {
+      window.app = new UIController();
+    });
+  </script>
+</body>
+</html>
